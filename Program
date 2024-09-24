@@ -1,0 +1,121 @@
+#define BLYNK_TEMPLATE_ID "TMPL3i6S3O5Ik"
+#define BLYNK_TEMPLATE_NAME "Traffic light controllerCopy"
+#define BLYNK_AUTH_TOKEN "sFnnMPBfkGMLw_CYuRYIuZ0SSIJdcrjI"
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+char auth[] = "sFnnMPBfkGMLw_CYuRYIuZ0SSIJdcrjI";  //auth
+char ssid[] = "TP-Link_F2E4_5G";   //wifi name
+char pass[] = "24250009";          //wifi password
+
+// GPIO pins for each traffic signal light (red, green)
+int signal1[] = {1, 42};  // Signal 1 - Red, Green (Note: Pin 1 is TX)
+int signal2[] = {45, 47}; // Signal 2 - Red, Green (Pins 45 and 47)
+
+// Timing delays for light changes (milliseconds)
+int redDelay = 5000;   // Delay for red light
+int greenDelay = 5000; // Delay for green light
+
+// IR sensor pins (Updated for two sensors)
+int irSensor1 = 13;
+int irSensor2 = 16;
+
+void setup()
+{
+  Serial.begin(115200); // Pin 1 is TX, be cautious if using it
+  Blynk.begin(auth, ssid, pass);
+
+  // Initialize traffic signal LEDs as outputs
+  for (int i = 0; i < 2; i++) // Only red and green lights now
+  {
+    pinMode(signal1[i], OUTPUT);
+    pinMode(signal2[i], OUTPUT);
+  }
+
+  // Initialize IR sensor pins as inputs
+  pinMode(irSensor1, INPUT);
+  pinMode(irSensor2, INPUT);
+}
+
+void loop()
+{
+  Blynk.run();
+
+  // Read IR sensor values (LOW means object detected)
+  bool S1 = digitalRead(irSensor1) == LOW;
+  bool S2 = digitalRead(irSensor2) == LOW;
+
+  // Check and update the status of each traffic signal based on IR sensor
+  if (S1)
+  {
+    signal1Function();
+  }
+  else if (S2)
+  {
+    signal2Function();
+  }
+
+  // Send updated signal status to Blynk
+  updateBlynk();
+
+  delay(1000); // Wait a bit before the next loop iteration
+}
+
+// Define functions for handling each signal
+void signal1Function()
+{
+  controlSignal(signal1, V1, V2);
+}
+void signal2Function()
+{
+  controlSignal(signal2, V3, V4);
+}
+
+// Controls the signal light changes and updates Blynk
+void controlSignal(int signalPins[], int vPinRed, int vPinGreen)
+{
+  lowAll(); // Reset all signals to red before changing the current one
+
+  // Turn on red LED and print "LED blink"
+  digitalWrite(signalPins[0], HIGH); // Turn on red LED
+  Serial.println("LED blink"); // Print to serial
+  Blynk.virtualWrite(vPinRed, 255);
+  delay(redDelay);
+
+  // Turn off red LED
+  digitalWrite(signalPins[0], LOW); // Turn off red LED
+  Blynk.virtualWrite(vPinRed, 0);
+
+  // Turn on green LED and print "LED blink"
+  digitalWrite(signalPins[1], HIGH); // Turn on green LED
+  Serial.println("LED blink"); // Print to serial
+  Blynk.virtualWrite(vPinGreen, 255);
+  delay(greenDelay);
+
+  // Turn off green LED
+  digitalWrite(signalPins[1], LOW); // Turn off green LED
+  Blynk.virtualWrite(vPinGreen, 0);
+}
+
+// Set all signals to red
+void lowAll()
+{
+  for (int i = 0; i < 2; i++) // Now only two signals
+  {
+    digitalWrite(signal1[0], HIGH); // Signal 1 Red ON
+    digitalWrite(signal1[1], LOW);  // Signal 1 Green OFF
+    digitalWrite(signal2[0], HIGH); // Signal 2 Red ON
+    digitalWrite(signal2[1], LOW);  // Signal 2 Green OFF
+  }
+}
+
+// Update Blynk with the current status of traffic signals
+void updateBlynk()
+{
+  Blynk.virtualWrite(V1, digitalRead(signal1[0]) == HIGH ? 255 : 0); // Signal 1 Red
+  Blynk.virtualWrite(V2, digitalRead(signal1[1]) == HIGH ? 255 : 0); // Signal 1 Green
+
+  Blynk.virtualWrite(V3, digitalRead(signal2[0]) == HIGH ? 255 : 0); // Signal 2 Red
+  Blynk.virtualWrite(V4, digitalRead(signal2[1]) == HIGH ? 255 : 0); // Signal 2 Green
+}
